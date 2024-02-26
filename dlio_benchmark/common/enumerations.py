@@ -156,6 +156,7 @@ class DataLoaderType(Enum):
 
   TENSORFLOW = 'tensorflow'
   PYTORCH = 'pytorch'
+  DF_PYTORCH = 'dataflux_pytorch'
   DALI = 'dali'
   NATIVE_DALI = 'native_dali'
   CUSTOM = 'custom'

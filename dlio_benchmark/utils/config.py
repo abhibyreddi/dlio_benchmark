@@ -66,7 +66,11 @@ class ConfigArguments:
     seed_change_epoch: bool = True
     generate_data: bool = False
     generate_only: bool = False
+    # Can be a path to a local directory or a GCS bucket prefix
     data_folder: str = "./data/"
+    # Needed to initialize a dataflux dataset
+    gcs_bucket: str = ""
+    gcp_project_name: str = ""
     output_folder: str = None
     checkpoint_folder: str = "./checkpoints/"
     log_file: str = "dlio.log"
