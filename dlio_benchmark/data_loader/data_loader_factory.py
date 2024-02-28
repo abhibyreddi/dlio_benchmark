@@ -49,6 +49,9 @@ class DataLoaderFactory(object):
         elif type == DataLoaderType.NATIVE_DALI:
             from dlio_benchmark.data_loader.native_dali_data_loader import NativeDaliDataLoader
             return NativeDaliDataLoader(format_type, dataset_type, epoch)
+        elif type == DataLoaderType.DF_PYTORCH:
+            from dlio_benchmark.data_loader.dataflux_torch_data_loader import DatafluxTorchDataLoader
+            return DatafluxTorchDataLoader(format_type, dataset_type, epoch)
         else:
             if DLIOMPI.get_instance().rank() == 0:
                 print("Data Loader %s not supported or plugins not found" % type)

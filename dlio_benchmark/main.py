@@ -28,6 +28,7 @@ from numpy import random
 
 from dlio_benchmark.checkpointing.checkpointing_factory import CheckpointingFactory
 from dlio_benchmark.common.constants import MODULE_DLIO_BENCHMARK
+import dataflux_pytorch
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['AUTOGRAPH_VERBOSITY'] = '0'
@@ -92,6 +93,7 @@ class DLIOBenchmark(object):
         self.comm.barrier()
         # Configure the logging library
         self.args.configure_dlio_logging(is_child=False)
+        logging.getLogger(dataflux_pytorch.__name__).setLevel(logging.ERROR)
         self.dlio_profiler = self.args.configure_dlio_profiler(is_child=False, use_pid=False)
         with Profile(name=f"{self.__init__.__qualname__}", cat=MODULE_DLIO_BENCHMARK):
             if self.args.my_rank == 0:

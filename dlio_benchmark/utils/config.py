@@ -413,6 +413,10 @@ def LoadConfig(args, config):
             args.generation_buffer_size = config['dataset']['generation_buffer_size']
         if 'num_samples_per_file' in config['dataset']:
             args.num_samples_per_file = config['dataset']['num_samples_per_file']
+        if 'gcs_bucket' in config['dataset']:
+            args.gcs_bucket = config['dataset']['gcs_bucket']
+        if 'gcp_project_name' in config['dataset']:
+            args.gcp_project_name = config['dataset']['gcp_project_name']
         if 'data_folder' in config['dataset']:
             args.data_folder = config['dataset']['data_folder']
             args.data_folder = args.data_folder.rstrip('/')
