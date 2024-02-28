@@ -54,7 +54,7 @@ class DatafluxTorchDataLoader(BaseDataLoader):
             bucket_name=self._args.gcs_bucket,
             config=dataflux_pytorch.dataflux_mapstyle_dataset.Config(
                 prefix=prefix,
-                num_procceses=self._args.dataflux_num_processes,
+                num_processes=self._args.dataflux_num_processes,
                 max_composite_object_size=self._args.dataflux_max_composite_object_size
             )
         )
