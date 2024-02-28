@@ -53,7 +53,9 @@ class DatafluxTorchDataLoader(BaseDataLoader):
             project_name=self._args.gcp_project_name,
             bucket_name=self._args.gcs_bucket,
             config=dataflux_pytorch.dataflux_mapstyle_dataset.Config(
-                prefix=prefix
+                prefix=prefix,
+                num_procceses=self._args.dataflux_num_processes,
+                max_composite_object_size=self._args.dataflux_max_composite_object_size
             )
         )
         if self._args.sample_shuffle != Shuffle.OFF:

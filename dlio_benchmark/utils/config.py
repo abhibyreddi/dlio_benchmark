@@ -72,6 +72,9 @@ class ConfigArguments:
     gcs_bucket: str = ""
     gcp_project_name: str = ""
     output_folder: str = None
+    # Dataflux config variables specified as reader options
+    dataflux_num_processes: int = 20
+    dataflux_max_composite_object_size: int = 100000000
     checkpoint_folder: str = "./checkpoints/"
     log_file: str = "dlio.log"
     file_prefix: str = "img"
@@ -446,6 +449,10 @@ def LoadConfig(args, config):
     elif 'reader' in config:
         reader = config['reader']
     if reader is not None:
+        if 'dataflux_num_processes' in reader:
+            args.dataflux_num_processes = reader['dataflux_num_processes']
+        if 'dataflux_max_composite_object_size' in reader:
+            args.dataflux_max_composite_object_size = reader['max_composite_object_size']
         if 'dont_use_mmap' in reader:
             args.dont_use_mmap = reader['dont_use_mmap']
         if 'reader_classname' in reader:
