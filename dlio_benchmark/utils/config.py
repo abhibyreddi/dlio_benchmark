@@ -452,7 +452,7 @@ def LoadConfig(args, config):
         if 'dataflux_num_processes' in reader:
             args.dataflux_num_processes = reader['dataflux_num_processes']
         if 'dataflux_max_composite_object_size' in reader:
-            args.dataflux_max_composite_object_size = reader['max_composite_object_size']
+            args.dataflux_max_composite_object_size = reader['dataflux_max_composite_object_size']
         if 'dont_use_mmap' in reader:
             args.dont_use_mmap = reader['dont_use_mmap']
         if 'reader_classname' in reader:
