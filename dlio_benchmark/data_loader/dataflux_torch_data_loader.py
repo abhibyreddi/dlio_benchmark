@@ -19,6 +19,8 @@ import logging
 import math
 import pickle
 import torch
+import io
+import numpy as np
 from torch.utils.data import Dataset, DataLoader, RandomSampler, SequentialSampler
 
 from dlio_benchmark.common.constants import MODULE_DATA_LOADER
@@ -49,13 +51,15 @@ class DatafluxTorchDataLoader(BaseDataLoader):
             prefix = prefix + "/train"
         elif self.dataset_type == DatasetType.VALID:
             prefix = prefix + "/valid"
+        format_fn = lambda b: np.load(io.BytesIO(b), allow_pickle=True)["x"]
         df_dataset = dataflux_pytorch.dataflux_mapstyle_dataset.DataFluxMapStyleDataset(
             project_name=self._args.gcp_project_name,
             bucket_name=self._args.gcs_bucket,
+            data_format_fn=format_fn,
             config=dataflux_pytorch.dataflux_mapstyle_dataset.Config(
                 prefix=prefix,
                 num_processes=self._args.dataflux_num_processes,
-                max_composite_object_size=self._args.dataflux_max_composite_object_size
+                max_composite_object_size=self._args.dataflux_max_composite_object_size,
             )
         )
         if self._args.sample_shuffle != Shuffle.OFF:
