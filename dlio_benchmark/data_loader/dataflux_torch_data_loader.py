@@ -53,7 +53,7 @@ class DatafluxTorchDataLoader(BaseDataLoader):
             prefix = prefix + "/valid"
         format_fn = lambda b: np.load(io.BytesIO(b), allow_pickle=True)["x"]
         logging.info("Initializing Dataflux dataset")
-        t0 = time.time()
+        t0 = time()
         df_dataset = dataflux_pytorch.dataflux_mapstyle_dataset.DataFluxMapStyleDataset(
             project_name=self._args.gcp_project_name,
             bucket_name=self._args.gcs_bucket,
@@ -64,7 +64,7 @@ class DatafluxTorchDataLoader(BaseDataLoader):
                 max_composite_object_size=self._args.dataflux_max_composite_object_size,
             )
         )
-        t1 = time.time()
+        t1 = time()
         logging.info(f"Took {t1 - t0} seconds to initialize Dataflux dataset")
         if self._args.sample_shuffle != Shuffle.OFF:
             # torch seed is used for all functions within.

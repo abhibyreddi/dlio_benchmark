@@ -173,7 +173,7 @@ class DLIOBenchmark(object):
         file_list_eval = []
         num_subfolders = 0
         if not self.args.data_loader == DataLoaderType.DF_PYTORCH:
-            listing_start_time = time.time()
+            listing_start_time = time()
             for dataset_type in [DatasetType.TRAIN, DatasetType.VALID]:
                 if dataset_type == DatasetType.TRAIN:
                     num_subfolders = self.num_subfolders_train
@@ -202,7 +202,7 @@ class DLIOBenchmark(object):
                     file_list_train = fullpaths
                 elif dataset_type is DatasetType.VALID:
                     file_list_eval = fullpaths
-            listing_end_time = time.time()
+            listing_end_time = time()
             logging.info(f"Listing took {listing_end_time - listing_start_time} seconds")
             if not self.generate_only and self.num_files_train > len(file_list_train):
                 raise Exception(
