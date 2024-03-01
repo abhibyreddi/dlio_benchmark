@@ -26,12 +26,13 @@ from torch.utils.data import Dataset, DataLoader, RandomSampler, SequentialSampl
 from dlio_benchmark.common.constants import MODULE_DATA_LOADER
 import dataflux_pytorch
 
-from dlio_benchmark.common.enumerations import Shuffle, DatasetType, DataLoaderType
+from dlio_benchmark.common.enumerations import Shuffle, DatasetType, DataLoaderType, FormatType
 from dlio_benchmark.data_loader.base_data_loader import BaseDataLoader
 from dlio_benchmark.reader.reader_factory import ReaderFactory
 from dlio_benchmark.utils.utility import utcnow, DLIOMPI
 from dlio_benchmark.utils.config import ConfigArguments
 from dlio_profiler.logger import fn_interceptor as Profile
+from pydicom import dcmread
 
 dlp = Profile(MODULE_DATA_LOADER)
 
@@ -39,10 +40,13 @@ class DatafluxTorchDataLoader(BaseDataLoader):
     @dlp.log_init
     def __init__(self, format_type, dataset_type, epoch_number):
         super().__init__(format_type, dataset_type, epoch_number, DataLoaderType.DF_PYTORCH)
-        self.reader = ReaderFactory.get_reader(type=self.format_type,
-                                               dataset_type=self.dataset_type,
-                                               thread_index=0,
-                                               epoch_number=self.epoch_number)
+        logging.info("Initializing format function for {format_type} files")
+        if format_type == FormatType.NPZ:
+            self.format_fn = lambda b: np.load(io.BytesIO(b), allow_pickle=True)["x"]
+        elif format_type == FormatType.DCM:
+            self.format_fn = lambda b: dcmread(b).pixel_array
+        else:
+            self.format_fn = lambda b: b
                 
     @dlp.log
     def read(self):
@@ -57,7 +61,7 @@ class DatafluxTorchDataLoader(BaseDataLoader):
         df_dataset = dataflux_pytorch.dataflux_mapstyle_dataset.DataFluxMapStyleDataset(
             project_name=self._args.gcp_project_name,
             bucket_name=self._args.gcs_bucket,
-            data_format_fn=format_fn,
+            data_format_fn=self.format_fn,
             config=dataflux_pytorch.dataflux_mapstyle_dataset.Config(
                 prefix=prefix,
                 num_processes=self._args.dataflux_num_processes,
@@ -65,7 +69,7 @@ class DatafluxTorchDataLoader(BaseDataLoader):
             )
         )
         t1 = time()
-        logging.info(f"Took {t1 - t0} seconds to initialize Dataflux dataset")
+        logging.info(f"Took {t1 - t0} seconds to initialize Dataflux dataset. Found {len(df_dataset)} objects.")
         if self._args.sample_shuffle != Shuffle.OFF:
             # torch seed is used for all functions within.
             torch.manual_seed(self._args.seed)
