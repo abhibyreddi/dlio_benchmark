@@ -65,7 +65,7 @@ class DatafluxTorchDataLoader(BaseDataLoader):
             )
         )
         t1 = time()
-        logging.info(f"Took {t1 - t0} seconds to initialize Dataflux dataset")
+        logging.info(f"Took {t1 - t0} seconds to initialize Dataflux dataset. Found {len(df_dataset)} objects.")
         if self._args.sample_shuffle != Shuffle.OFF:
             # torch seed is used for all functions within.
             torch.manual_seed(self._args.seed)

@@ -203,7 +203,7 @@ class DLIOBenchmark(object):
                 elif dataset_type is DatasetType.VALID:
                     file_list_eval = fullpaths
             listing_end_time = time()
-            logging.info(f"Listing took {listing_end_time - listing_start_time} seconds")
+            logging.info(f"Listing took {listing_end_time - listing_start_time} seconds. Found {len(fullpaths)} objects.")
             if not self.generate_only and self.num_files_train > len(file_list_train):
                 raise Exception(
                     "Not enough training dataset is found; Please run the code with ++workload.workflow.generate_data=True")
