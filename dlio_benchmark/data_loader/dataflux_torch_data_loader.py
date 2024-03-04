@@ -40,7 +40,7 @@ class DatafluxTorchDataLoader(BaseDataLoader):
     @dlp.log_init
     def __init__(self, format_type, dataset_type, epoch_number):
         super().__init__(format_type, dataset_type, epoch_number, DataLoaderType.DF_PYTORCH)
-        logging.info("Initializing format function for {format_type} files")
+        logging.info(f"Initializing format function for {format_type} files")
         if format_type == FormatType.NPZ:
             self.format_fn = lambda b: np.load(io.BytesIO(b), allow_pickle=True)["x"]
         elif format_type == FormatType.DCM:
