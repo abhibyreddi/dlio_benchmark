@@ -44,7 +44,11 @@ class DatafluxTorchDataLoader(BaseDataLoader):
         if format_type == FormatType.NPZ:
             self.format_fn = lambda b: np.load(io.BytesIO(b), allow_pickle=True)["x"]
         elif format_type == FormatType.DCM:
-            self.format_fn = lambda b: dcmread(b).pixel_array
+            def parse_dcm(b):
+                a = dcmread(io.BytesIO(b)).pixel_array.astype(np.int32, casting="safe")
+                a.resize((512, 512))
+                return a
+            self.format_fn = parse_dcm
         else:
             self.format_fn = lambda b: b
                 
@@ -55,7 +59,6 @@ class DatafluxTorchDataLoader(BaseDataLoader):
             prefix = prefix + "/train"
         elif self.dataset_type == DatasetType.VALID:
             prefix = prefix + "/valid"
-        format_fn = lambda b: np.load(io.BytesIO(b), allow_pickle=True)["x"]
         logging.info("Initializing Dataflux dataset")
         t0 = time()
         df_dataset = dataflux_pytorch.dataflux_mapstyle_dataset.DataFluxMapStyleDataset(
