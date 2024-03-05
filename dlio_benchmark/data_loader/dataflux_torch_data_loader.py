@@ -47,7 +47,7 @@ class DatafluxTorchDataLoader(BaseDataLoader):
             def parse_dcm(b):
                 a = dcmread(io.BytesIO(b)).pixel_array.astype(np.int32, casting="safe")
                 logging.debug(f"Read dcm image. Size: {a.size}; Type: {a.dtype}")
-                return np.random.rand(512, 512)
+                return torch.rand((512, 512))
             self.format_fn = parse_dcm
         else:
             self.format_fn = lambda b: b
