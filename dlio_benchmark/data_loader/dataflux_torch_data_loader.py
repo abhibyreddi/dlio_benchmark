@@ -45,15 +45,9 @@ class DatafluxTorchDataLoader(BaseDataLoader):
             self.format_fn = lambda b: np.load(io.BytesIO(b), allow_pickle=True)["x"]
         elif format_type == FormatType.DCM:
             def parse_dcm(b):
-                start = time()
                 a = dcmread(io.BytesIO(b)).pixel_array.astype(np.int32, casting="safe")
-                end = time()
-                logging.info(f"Casting dcm array to numpy int32 ndarray took {end - start} seconds")
-                start = time()
-                a.resize((512, 512))
-                end = time()
-                logging.info(f"Resizing numpy int32 ndarray tok {end - start} seconds")
-                return a
+                logging.debug(f"Read dcm image. Size: {a.size}; Type: {a.dtype}")
+                return np.random.rand(512, 512)
             self.format_fn = parse_dcm
         else:
             self.format_fn = lambda b: b
