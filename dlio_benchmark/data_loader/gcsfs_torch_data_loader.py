@@ -65,6 +65,8 @@ class GCSFSTorchDataset(Dataset):
             access='read_only', 
             skip_instance_cache=True
         )
+        fsspec.asyn.iothread[0] = None
+        fsspec.asyn.loop[0] = None
         # List all files in the dataset
         prefix = args.data_folder
         if self.dataset_type == DatasetType.TRAIN:
@@ -105,6 +107,8 @@ class GCSFSTorchDataset(Dataset):
             access='read_only',
             skip_instance_cache=True
         )
+        fsspec.asyn.iothread[0] = None
+        fsspec.asyn.loop[0] = None
         logging.info(f"Reading file {self.files[image_idx]}")
         with fs.open(self.files[image_idx], 'rb') as f:
             contents = self.format_fn(f.read())
@@ -119,6 +123,7 @@ class GCSFSTorchDataset(Dataset):
             access='read_only',
             skip_instance_cache=True
         )
+        logging.info("Initialized GCSFileSystem inside __getitems__")
         fsspec.asyn.iothread[0] = None
         fsspec.asyn.loop[0] = None
         def readFile(idx):
