@@ -95,7 +95,11 @@ class GCSFSTorchDataset(Dataset):
 
     @dlp.log
     def __getitem__(self, image_idx):
-        with self.gcs_fs.open(self.files[image_idx], 'rb') as f:
+        fs = gcsfs.GCSFileSystem(
+            project=args.gcp_project_name,         
+            access='read_only', 
+        )
+        with fs.open(self.files[image_idx], 'rb') as f:
             return self.format_fn(f.read())
 
 class GCSFSTorchDataLoader(BaseDataLoader):
