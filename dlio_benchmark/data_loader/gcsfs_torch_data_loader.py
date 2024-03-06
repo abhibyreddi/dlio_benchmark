@@ -77,8 +77,10 @@ class GCSFSTorchDataset(Dataset):
 
         # Initialize reader function
         if format_type == FormatType.NPZ:
+            logging.info(f"Initializing format function for {format_type} files")
             self.format_fn = lambda b: np.load(io.BytesIO(b), allow_pickle=True)["x"]
         elif format_type == FormatType.DCM:
+            logging.info(f"Initializing format function for {format_type} files")
             def parse_dcm(b):
                 a = dcmread(io.BytesIO(b)).pixel_array
                 logging.debug(f"Read dcm image. Size: {a.size}; Type: {a.dtype}")
@@ -102,7 +104,8 @@ class GCSFSTorchDataset(Dataset):
         )
         logging.info(f"Reading file {self.files[image_idx]}")
         with fs.open(self.files[image_idx], 'rb') as f:
-            return self.format_fn(f.read())
+            contents = self.format_fn(f.read())
+        return contents
 
     @dlp.log
     def __getitems__(self, indices):
