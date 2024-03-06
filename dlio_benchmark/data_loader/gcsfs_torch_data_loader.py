@@ -60,9 +60,10 @@ class GCSFSTorchDataset(Dataset):
 
         self.gcp_project_name = args.gcp_project_name
         # Initialize GCSFS
-        self.gcs_fs = gcsfs.GCSFileSystem(
+        gcs_fs = gcsfs.GCSFileSystem(
             project=self.gcp_project_name,         
             access='read_only', 
+            skip_instance_cache=True
         )
         # List all files in the dataset
         prefix = args.data_folder
@@ -72,7 +73,7 @@ class GCSFSTorchDataset(Dataset):
             prefix = os.path.join(prefix, "valid")
         dataset = os.path.join(args.gcs_bucket, prefix)
         logging.info(f"Listing files in {dataset} with GCSFS")
-        self.files = self.gcs_fs.ls(dataset)
+        self.files = gcs_fs.ls(dataset)
         logging.info(f"Found {len(self.files)} files")
         self.num_samples = len(self.files)
 
@@ -102,6 +103,7 @@ class GCSFSTorchDataset(Dataset):
         fs = gcsfs.GCSFileSystem(
             project=self.gcp_project_name,         
             access='read_only',
+            skip_instance_cache=True
         )
         logging.info(f"Reading file {self.files[image_idx]}")
         with fs.open(self.files[image_idx], 'rb') as f:
@@ -111,6 +113,7 @@ class GCSFSTorchDataset(Dataset):
 
     @dlp.log
     def __getitems__(self, indices):
+        logging.info(f"__getitems__ called with arg {indices}")
         fs = gcsfs.GCSFileSystem(
             project=self.gcp_project_name,
             access='read_only',
@@ -121,7 +124,7 @@ class GCSFSTorchDataset(Dataset):
         def readFile(idx):
             with fs.open(self.files[idx], 'rb') as f:
                 content = self.format_fn(f.read())
-                logging.info(f"Contents: {contents}")
+                logging.info(f"Contents: {content}")
                 return content
         return [readFile(idx) for idx in indices]
 
