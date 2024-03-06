@@ -66,7 +66,11 @@ class ConfigArguments:
     seed_change_epoch: bool = True
     generate_data: bool = False
     generate_only: bool = False
+    # Can be a path to a local directory or a GCS bucket prefix
     data_folder: str = "./data/"
+    # Needed to initialize a dataflux dataset
+    gcs_bucket: str = ""
+    gcp_project_name: str = ""
     output_folder: str = None
     checkpoint_folder: str = "./checkpoints/"
     log_file: str = "dlio.log"
@@ -422,6 +426,10 @@ def LoadConfig(args, config):
             args.generation_buffer_size = config['dataset']['generation_buffer_size']
         if 'num_samples_per_file' in config['dataset']:
             args.num_samples_per_file = config['dataset']['num_samples_per_file']
+        if 'gcs_bucket' in config['dataset']:
+            args.gcs_bucket = config['dataset']['gcs_bucket']
+        if 'gcp_project_name' in config['dataset']:
+            args.gcp_project_name = config['dataset']['gcp_project_name']
         if 'data_folder' in config['dataset']:
             args.data_folder = config['dataset']['data_folder']
             args.data_folder = args.data_folder.rstrip('/')

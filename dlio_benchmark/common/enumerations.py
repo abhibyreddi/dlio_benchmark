@@ -120,6 +120,7 @@ class FormatType(Enum):
     HDF5_OPT = 'hdf5_opt'
     JPEG = 'jpeg'
     PNG = 'png'
+    DCM = 'dcm'
     INDEXED_BINARY = 'indexed_binary'
     MMAP_INDEXED_BINARY = 'mmap_indexed_binary'
 
@@ -156,6 +157,7 @@ class DataLoaderType(Enum):
     TENSORFLOW='tensorflow'
     PYTORCH='pytorch'
     DALI='dali'
+    GCSFS_PYTORCH = 'gcsfs_pytorch'
     NATIVE_DALI='native_dali'
     CUSTOM='custom'
     NONE='none'

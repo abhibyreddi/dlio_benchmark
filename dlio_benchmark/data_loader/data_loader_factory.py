@@ -40,6 +40,9 @@ class DataLoaderFactory(object):
         elif type == DataLoaderType.PYTORCH:
             from dlio_benchmark.data_loader.torch_data_loader import TorchDataLoader
             return TorchDataLoader(format_type, dataset_type, epoch)
+        elif type == DataLoaderType.GCSFS_PYTORCH:
+            from dlio_benchmark.data_loader.gcsfs_torch_data_loader import GCSFSTorchDataLoader
+            return GCSFSTorchDataLoader(format_type, dataset_type, epoch)
         elif type == DataLoaderType.TENSORFLOW:
             from dlio_benchmark.data_loader.tf_data_loader import TFDataLoader
             return TFDataLoader(format_type, dataset_type, epoch)
