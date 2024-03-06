@@ -61,7 +61,7 @@ class GCSFSTorchDataset(Dataset):
         self.gcs_fs = gcsfs.GCSFileSystem(
             project=args.gcp_project_name,         
             access='read_only', 
-            skip_instance_cache=True
+            asynchronous=True
         )
         # List all files in the dataset
         prefix = args.data_folder
