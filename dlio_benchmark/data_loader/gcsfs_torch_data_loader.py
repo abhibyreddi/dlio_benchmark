@@ -100,6 +100,7 @@ class GCSFSTorchDataset(Dataset):
             project=self.gcp_project_name,         
             access='read_only',
         )
+        logging.info(f"Reading file {self.files[image_idx]}")
         with fs.open(self.files[image_idx], 'rb') as f:
             return self.format_fn(f.read())
 
