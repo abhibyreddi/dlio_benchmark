@@ -173,7 +173,7 @@ class DLIOBenchmark(object):
         file_list_eval = []
         num_subfolders = 0
         # Skip listing if benchmarking dataflux or gcsfs.
-        if not self.args.data_loader == DataLoaderType.DF_PYTORCH or not self.args.data_loader == DataLoaderType.GCSFS_PYTORCH:
+        if not self.args.data_loader == DataLoaderType.DF_PYTORCH and not self.args.data_loader == DataLoaderType.GCSFS_PYTORCH:
             listing_start_time = time()
             for dataset_type in [DatasetType.TRAIN, DatasetType.VALID]:
                 if dataset_type == DatasetType.TRAIN:
