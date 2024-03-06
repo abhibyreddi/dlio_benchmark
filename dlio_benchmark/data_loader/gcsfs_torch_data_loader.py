@@ -16,6 +16,7 @@
 """
 from time import time
 import logging
+import fsspec
 import math
 import os
 import io
@@ -110,7 +111,19 @@ class GCSFSTorchDataset(Dataset):
 
     @dlp.log
     def __getitems__(self, indices):
-        return [self.__getitem__(i) for i in indices]
+        fs = gcsfs.GCSFileSystem(
+            project=self.gcp_project_name,
+            access='read_only',
+            skip_instance_cache=True
+        )
+        fsspec.asyn.iothread[0] = None
+        fsspec.asyn.loop[0] = None
+        def readFile(idx):
+            with fs.open(self.files[idx], 'rb') as f:
+                content = self.format_fn(f.read())
+                logging.info(f"Contents: {contents}")
+                return content
+        return [readFile(idx) for idx in indices]
 
 class GCSFSTorchDataLoader(BaseDataLoader):
     @dlp.log_init
