@@ -57,9 +57,10 @@ class GCSFSTorchDataset(Dataset):
         if num_workers == 0:
             self.worker_init(-1)
 
+        self.gcp_project_name = args.gcp_project_name
         # Initialize GCSFS
         self.gcs_fs = gcsfs.GCSFileSystem(
-            project=args.gcp_project_name,         
+            project=self.gcp_project_name,         
             access='read_only', 
         )
         # List all files in the dataset
@@ -96,8 +97,8 @@ class GCSFSTorchDataset(Dataset):
     @dlp.log
     def __getitem__(self, image_idx):
         fs = gcsfs.GCSFileSystem(
-            project=args.gcp_project_name,         
-            access='read_only', 
+            project=self.gcp_project_name,         
+            access='read_only',
         )
         with fs.open(self.files[image_idx], 'rb') as f:
             return self.format_fn(f.read())
