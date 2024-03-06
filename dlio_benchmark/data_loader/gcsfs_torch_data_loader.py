@@ -17,68 +17,88 @@
 from time import time
 import logging
 import math
+import os
+import io
 import pickle
 import torch
-import io
+import gcsfs
 import numpy as np
+
 from torch.utils.data import Dataset, DataLoader, RandomSampler, SequentialSampler
 
 from dlio_benchmark.common.constants import MODULE_DATA_LOADER
-import dataflux_pytorch
-
 from dlio_benchmark.common.enumerations import Shuffle, DatasetType, DataLoaderType, FormatType
 from dlio_benchmark.data_loader.base_data_loader import BaseDataLoader
 from dlio_benchmark.reader.reader_factory import ReaderFactory
 from dlio_benchmark.utils.utility import utcnow, DLIOMPI
 from dlio_benchmark.utils.config import ConfigArguments
 from dlio_profiler.logger import fn_interceptor as Profile
+
 from pydicom import dcmread
 
 dlp = Profile(MODULE_DATA_LOADER)
 
-class DatafluxTorchDataLoader(BaseDataLoader):
+
+class GCSFSTorchDataset(Dataset):
+    """
+    Currently, we only support loading one sample per file
+    TODO: support multiple samples per file
+    """
+    @dlp.log_init
+    def __init__(self, format_type, dataset_type, epoch, num_samples, num_workers, batch_size):
+        self.format_type = format_type
+        self.dataset_type = dataset_type
+        self.epoch_number = epoch
+        self.num_samples = num_samples
+        self.batch_size = batch_size
+        args = ConfigArguments.get_instance()
+        self.serial_args = pickle.dumps(args)
+        self.dlp_logger = None
+        if num_workers == 0:
+            self.worker_init(-1)
+
+        # Initialize GCSFS
+        self.gcs_fs = gcsfs.GCSFileSystem(project=args.gcp_project_name)
+        # List all files in the dataset
+        prefix = args.data_folder
+        if self.dataset_type == DatasetType.TRAIN:
+            prefix = os.path.join(prefix,  "train")
+        elif self.dataset_type == DatasetType.VALID:
+            prefix = os.path.join(prefix, "valid")
+        self.files = self.gcs_fs.ls(os.path.join(args.gcs_bucket, prefix))
+
+        # Initialize reader function
+        if format_type == FormatType.NPZ:
+            self.format_fn = lambda b: np.load(io.BytesIO(b), allow_pickle=True)["x"]
+        elif format_type == FormatType.DCM:
+            def parse_dcm(b):
+                a = dcmread(io.BytesIO(b)).pixel_array
+                logging.debug(f"Read dcm image. Size: {a.size}; Type: {a.dtype}")
+                return torch.rand((512, 512))
+            self.format_fn = parse_dcm
+        else:
+            self.format_fn = lambda b: b
+
+    def __del__(self):
+        if self.dlp_logger:
+            self.dlp_logger.finalize()
+    @dlp.log
+    def __len__(self):
+        return self.num_samples
+
+    @dlp.log
+    def __getitem__(self, image_idx):
+        with self.gcs_fs.open(self.files[image_idx]) as f:
+            return self.format_fn(f.read())
+
+class GCSFSTorchDataLoader(BaseDataLoader):
     @dlp.log_init
     def __init__(self, format_type, dataset_type, epoch_number):
-        super().__init__(format_type, dataset_type, epoch_number, DataLoaderType.DF_PYTORCH)
-        logging.info(f"Initializing format function for {format_type} files")
-        if format_type == FormatType.NPZ:
-            self.format_fn = lambda b: np.load(io.BytesIO(b), allow_pickle=True)["x"]
-        elif format_type == FormatType.DCM:
-            def parse_dcm(b):
-                a = dcmread(io.BytesIO(b)).pixel_array
-                logging.debug(f"Read dcm image. Size: {a.size}; Type: {a.dtype}")
-                return torch.rand((512, 512))
-            self.format_fn = parse_dcm
-        if format_type == FormatType.NPZ:
-            self.format_fn = lambda b: np.load(io.BytesIO(b), allow_pickle=True)["x"]
-        elif format_type == FormatType.DCM:
-            def parse_dcm(b):
-                a = dcmread(io.BytesIO(b)).pixel_array
-                logging.debug(f"Read dcm image. Size: {a.size}; Type: {a.dtype}")
-                return torch.rand((512, 512))
-            self.format_fn = parse_dcm
-                
+        super().__init__(format_type, dataset_type, epoch_number, DataLoaderType.PYTORCH)
+
     @dlp.log
     def read(self):
-        prefix=self._args.data_folder
-        if self.dataset_type == DatasetType.TRAIN:
-            prefix = prefix + "/train"
-        elif self.dataset_type == DatasetType.VALID:
-            prefix = prefix + "/valid"
-        logging.info("Initializing Dataflux dataset")
-        t0 = time()
-        df_dataset = dataflux_pytorch.dataflux_mapstyle_dataset.DataFluxMapStyleDataset(
-            project_name=self._args.gcp_project_name,
-            bucket_name=self._args.gcs_bucket,
-            data_format_fn=self.format_fn,
-            config=dataflux_pytorch.dataflux_mapstyle_dataset.Config(
-                prefix=prefix,
-                num_processes=self._args.dataflux_num_processes,
-                max_composite_object_size=self._args.dataflux_max_composite_object_size,
-            )
-        )
-        t1 = time()
-        logging.info(f"Took {t1 - t0} seconds to initialize Dataflux dataset. Found {len(df_dataset)} objects.")
+        dataset = GCSFSTorchDataset(self.format_type, self.dataset_type, self.epoch_number, self.num_samples, self._args.read_threads, self.batch_size)
         if self._args.sample_shuffle != Shuffle.OFF:
             # torch seed is used for all functions within.
             torch.manual_seed(self._args.seed)
@@ -87,9 +107,9 @@ class DatafluxTorchDataLoader(BaseDataLoader):
             torch_generator = torch.Generator()
             torch_generator.manual_seed(seed)
             # Pass generator to sampler
-            sampler = RandomSampler(df_dataset, generator=torch_generator)
+            sampler = RandomSampler(dataset, generator=torch_generator)
         else:
-            sampler = SequentialSampler(df_dataset)
+            sampler = SequentialSampler(dataset)
         if self._args.read_threads >= 1:
             prefetch_factor = math.ceil(self._args.prefetch_size / self._args.read_threads)
         else:
@@ -111,19 +131,18 @@ class DatafluxTorchDataLoader(BaseDataLoader):
                     'prefetch_factor': prefetch_factor}
             if torch.__version__ != '1.3.1':       
                 kwargs['persistent_workers'] = True
-
         if torch.__version__ == '1.3.1':
             if 'prefetch_factor' in kwargs:
                 del kwargs['prefetch_factor']
-            self._dataset = DataLoader(df_dataset,
+            self._dataset = DataLoader(dataset,
                                        batch_size=self.batch_size,
                                        sampler=sampler,
                                        num_workers=self._args.read_threads,
                                        pin_memory=True,
-                                       drop_last=True, 
+                                       drop_last=True,
                                        **kwargs)
         else: 
-            self._dataset = DataLoader(df_dataset,
+            self._dataset = DataLoader(dataset,
                                        batch_size=self.batch_size,
                                        sampler=sampler,
                                        num_workers=self._args.read_threads,
