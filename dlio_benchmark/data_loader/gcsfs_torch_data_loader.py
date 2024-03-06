@@ -19,12 +19,16 @@ import logging
 import math
 import pickle
 import torch
+import os
+import io
+import gcsfs
+import fsspec
 from torch.utils.data import Dataset, DataLoader, RandomSampler, SequentialSampler
 from torch.utils.data.sampler import Sampler
 import numpy as np
 
 from dlio_benchmark.common.constants import MODULE_DATA_LOADER
-from dlio_benchmark.common.enumerations import Shuffle, DatasetType, DataLoaderType
+from dlio_benchmark.common.enumerations import Shuffle, DatasetType, DataLoaderType, FormatType
 from dlio_benchmark.data_loader.base_data_loader import BaseDataLoader
 from dlio_benchmark.reader.reader_factory import ReaderFactory
 from dlio_benchmark.utils.utility import utcnow, DLIOMPI
@@ -34,20 +38,17 @@ from dlio_profiler.logger import fn_interceptor as Profile
 dlp = Profile(MODULE_DATA_LOADER)
 
 
-class TorchDataset(Dataset):
+class GCSFSTorchDataset(Dataset):
     """
     Currently, we only support loading one sample per file
     TODO: support multiple samples per file
     """
-
     @dlp.log_init
     def __init__(self, format_type, dataset_type, epoch, num_samples, num_workers, batch_size):
         self.format_type = format_type
         self.dataset_type = dataset_type
         self.epoch_number = epoch
-        self.num_samples = num_samples
-        self.reader = None
-        self.num_images_read = 0
+
         self.batch_size = batch_size
         args = ConfigArguments.get_instance()
         self.serial_args = pickle.dumps(args)
@@ -55,33 +56,73 @@ class TorchDataset(Dataset):
         if num_workers == 0:
             self.worker_init(-1)
 
-    @dlp.log
-    def worker_init(self, worker_id):
-        pickle.loads(self.serial_args)
-        _args = ConfigArguments.get_instance()
-        _args.configure_dlio_logging(is_child=True)
-        self.dlp_logger = _args.configure_dlio_profiler(is_child=True, use_pid=True)
-        logging.debug(f"{utcnow()} worker initialized {worker_id} with format {self.format_type}")
-        self.reader = ReaderFactory.get_reader(type=self.format_type,
-                                               dataset_type=self.dataset_type,
-                                               thread_index=worker_id,
-                                               epoch_number=self.epoch_number)
+        self.gcp_project_name = args.gcp_project_name
+        # Initialize GCSFS
+        gcs_fs = gcsfs.GCSFileSystem(
+            project=self.gcp_project_name,         
+            access='read_only', 
+            skip_instance_cache=True
+        )
+        fsspec.asyn.iothread[0] = None
+        fsspec.asyn.loop[0] = None
+        # List all files in the dataset
+        prefix = args.data_folder
+        if self.dataset_type == DatasetType.TRAIN:
+            prefix = os.path.join(prefix,  "train")
+        elif self.dataset_type == DatasetType.VALID:
+            prefix = os.path.join(prefix, "valid")
+        dataset = os.path.join(args.gcs_bucket, prefix)
+        logging.info(f"Listing files in {dataset} with GCSFS")
+        self.files = gcs_fs.ls(dataset)
+        logging.info(f"Found {len(self.files)} files")
+        self.num_samples = len(self.files)
+
+        # Initialize reader function
+        if format_type == FormatType.NPZ:
+            self.format_fn = lambda b: np.load(io.BytesIO(b), allow_pickle=True)["x"]
+        elif format_type == FormatType.DCM:
+            def parse_dcm(b):
+                a = dcmread(io.BytesIO(b)).pixel_array
+                logging.debug(f"Read dcm image. Size: {a.size}; Type: {a.dtype}")
+                return torch.rand((512, 512))
+            self.format_fn = parse_dcm
+        else:
+            self.format_fn = lambda b: b
 
     def __del__(self):
         if self.dlp_logger:
             self.dlp_logger.finalize()
-
     @dlp.log
     def __len__(self):
         return self.num_samples
 
     @dlp.log
     def __getitem__(self, image_idx):
-        self.num_images_read += 1
-        step = int(math.ceil(self.num_images_read / self.batch_size))
-        logging.debug(f"{utcnow()} Rank {DLIOMPI.get_instance().rank()} reading {image_idx} sample")
-        return self.reader.read_index(image_idx, step)
+        fs = gcsfs.GCSFileSystem(
+            project=self.gcp_project_name,         
+            access='read_only',
+            skip_instance_cache=True
+        )
+        fsspec.asyn.iothread[0] = None
+        fsspec.asyn.loop[0] = None
+        with fs.open(self.files[image_idx], 'rb') as f:
+            contents = self.format_fn(f.read())
+        return contents
 
+    @dlp.log
+    def __getitems__(self, indices):
+        fs = gcsfs.GCSFileSystem(
+            project=self.gcp_project_name,
+            access='read_only',
+            skip_instance_cache=True
+        )
+        fsspec.asyn.iothread[0] = None
+        fsspec.asyn.loop[0] = None
+        def readFile(idx):
+            with fs.open(self.files[idx], 'rb') as f:
+                content = self.format_fn(f.read())
+                return content
+        return [readFile(idx) for idx in indices]
 
 class dlio_sampler(Sampler):
     def __init__(self, rank, size, num_samples, shuffle, epochs, seed):
@@ -108,15 +149,14 @@ class dlio_sampler(Sampler):
             yield indices[i % self.num_samples]
 
 
-class TorchDataLoader(BaseDataLoader):
+class GCSFSTorchDataLoader(BaseDataLoader):
     @dlp.log_init
     def __init__(self, format_type, dataset_type, epoch_number):
         super().__init__(format_type, dataset_type, epoch_number, DataLoaderType.PYTORCH)
 
     @dlp.log
     def read(self):
-        dataset = TorchDataset(self.format_type, self.dataset_type, self.epoch_number, self.num_samples,
-                               self._args.read_threads, self.batch_size)
+        dataset = GCSFSTorchDataset(self.format_type, self.dataset_type, self.epoch_number, self.num_samples, self._args.read_threads, self.batch_size)
         sampler = dlio_sampler(self._args.my_rank, self._args.comm_size, self.num_samples, self._args.sample_shuffle,
                                self._args.epochs, self._args.seed)
         if self._args.read_threads >= 1:
