@@ -49,7 +49,7 @@ class GCSFSTorchDataset(Dataset):
         self.format_type = format_type
         self.dataset_type = dataset_type
         self.epoch_number = epoch
-        self.num_samples = num_samples
+
         self.batch_size = batch_size
         args = ConfigArguments.get_instance()
         self.serial_args = pickle.dumps(args)
@@ -65,7 +65,11 @@ class GCSFSTorchDataset(Dataset):
             prefix = os.path.join(prefix,  "train")
         elif self.dataset_type == DatasetType.VALID:
             prefix = os.path.join(prefix, "valid")
-        self.files = self.gcs_fs.ls(os.path.join(args.gcs_bucket, prefix))
+        dataset = os.path.join(args.gcs_bucket, prefix)
+        logging.info(f"Listing files in {dataset} with GCSFS")
+        self.files = self.gcs_fs.ls(dataset)
+        logging.info(f"Found {len(self.files)} files")
+        self.num_samples = num_samples
 
         # Initialize reader function
         if format_type == FormatType.NPZ:
