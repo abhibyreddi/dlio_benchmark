@@ -104,6 +104,10 @@ class GCSFSTorchDataset(Dataset):
         with fs.open(self.files[image_idx], 'rb') as f:
             return self.format_fn(f.read())
 
+    @dlp.log
+    def __getitems__(self, indices):
+        return [self.__getitem__(i) for i in indices]
+
 class GCSFSTorchDataLoader(BaseDataLoader):
     @dlp.log_init
     def __init__(self, format_type, dataset_type, epoch_number):
