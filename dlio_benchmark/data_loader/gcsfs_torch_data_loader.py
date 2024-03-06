@@ -58,7 +58,11 @@ class GCSFSTorchDataset(Dataset):
             self.worker_init(-1)
 
         # Initialize GCSFS
-        self.gcs_fs = gcsfs.GCSFileSystem(project=args.gcp_project_name)
+        self.gcs_fs = gcsfs.GCSFileSystem(
+            project=args.gcp_project_name,         
+            access='read_only', 
+            skip_instance_cache=True
+        )
         # List all files in the dataset
         prefix = args.data_folder
         if self.dataset_type == DatasetType.TRAIN:
@@ -92,7 +96,7 @@ class GCSFSTorchDataset(Dataset):
 
     @dlp.log
     def __getitem__(self, image_idx):
-        with self.gcs_fs.open(self.files[image_idx]) as f:
+        with self.gcs_fs.open(self.files[image_idx], 'rb') as f:
             return self.format_fn(f.read())
 
 class GCSFSTorchDataLoader(BaseDataLoader):
