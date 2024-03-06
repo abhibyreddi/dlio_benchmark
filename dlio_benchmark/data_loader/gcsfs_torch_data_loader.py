@@ -61,7 +61,6 @@ class GCSFSTorchDataset(Dataset):
         self.gcs_fs = gcsfs.GCSFileSystem(
             project=args.gcp_project_name,         
             access='read_only', 
-            asynchronous=True,
         )
         # List all files in the dataset
         prefix = args.data_folder
@@ -71,7 +70,7 @@ class GCSFSTorchDataset(Dataset):
             prefix = os.path.join(prefix, "valid")
         dataset = os.path.join(args.gcs_bucket, prefix)
         logging.info(f"Listing files in {dataset} with GCSFS")
-        self.files = await self.gcs_fs._ls(dataset)
+        self.files = self.gcs_fs.ls(dataset)
         logging.info(f"Found {len(self.files)} files")
         self.num_samples = len(self.files)
 
