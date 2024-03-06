@@ -69,7 +69,7 @@ class GCSFSTorchDataset(Dataset):
         logging.info(f"Listing files in {dataset} with GCSFS")
         self.files = self.gcs_fs.ls(dataset)
         logging.info(f"Found {len(self.files)} files")
-        self.num_samples = num_samples
+        self.num_samples = len(self.files)
 
         # Initialize reader function
         if format_type == FormatType.NPZ:
