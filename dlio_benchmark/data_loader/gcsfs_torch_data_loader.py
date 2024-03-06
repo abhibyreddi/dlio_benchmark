@@ -81,10 +81,8 @@ class GCSFSTorchDataset(Dataset):
 
         # Initialize reader function
         if format_type == FormatType.NPZ:
-            logging.info(f"Initializing format function for {format_type} files")
             self.format_fn = lambda b: np.load(io.BytesIO(b), allow_pickle=True)["x"]
         elif format_type == FormatType.DCM:
-            logging.info(f"Initializing format function for {format_type} files")
             def parse_dcm(b):
                 a = dcmread(io.BytesIO(b)).pixel_array
                 logging.debug(f"Read dcm image. Size: {a.size}; Type: {a.dtype}")
@@ -109,27 +107,22 @@ class GCSFSTorchDataset(Dataset):
         )
         fsspec.asyn.iothread[0] = None
         fsspec.asyn.loop[0] = None
-        logging.info(f"Reading file {self.files[image_idx]}")
         with fs.open(self.files[image_idx], 'rb') as f:
             contents = self.format_fn(f.read())
-            logging.info(f"Contents: {contents}")
         return contents
 
     @dlp.log
     def __getitems__(self, indices):
-        logging.info(f"__getitems__ called with arg {indices}")
         fs = gcsfs.GCSFileSystem(
             project=self.gcp_project_name,
             access='read_only',
             skip_instance_cache=True
         )
-        logging.info("Initialized GCSFileSystem inside __getitems__")
         fsspec.asyn.iothread[0] = None
         fsspec.asyn.loop[0] = None
         def readFile(idx):
             with fs.open(self.files[idx], 'rb') as f:
                 content = self.format_fn(f.read())
-                logging.info(f"Contents: {content}")
                 return content
         return [readFile(idx) for idx in indices]
 
