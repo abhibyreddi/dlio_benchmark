@@ -105,6 +105,7 @@ class GCSFSTorchDataset(Dataset):
         logging.info(f"Reading file {self.files[image_idx]}")
         with fs.open(self.files[image_idx], 'rb') as f:
             contents = self.format_fn(f.read())
+            logging.info(f"Contents: {contents}")
         return contents
 
     @dlp.log
