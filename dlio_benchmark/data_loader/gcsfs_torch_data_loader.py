@@ -157,7 +157,7 @@ class GCSFSTorchDataLoader(BaseDataLoader):
     @dlp.log
     def read(self):
         dataset = GCSFSTorchDataset(self.format_type, self.dataset_type, self.epoch_number, self.num_samples, self._args.read_threads, self.batch_size)
-        sampler = dlio_sampler(self._args.my_rank, self._args.comm_size, self.num_samples, self._args.sample_shuffle,
+        sampler = dlio_sampler(self._args.my_rank, self._args.comm_size, dataset.num_samples, self._args.sample_shuffle,
                                self._args.epochs, self._args.seed)
         if self._args.read_threads >= 1:
             prefetch_factor = math.ceil(self._args.prefetch_size / self._args.read_threads)
