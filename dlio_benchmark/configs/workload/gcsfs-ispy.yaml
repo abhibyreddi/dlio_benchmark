@@ -1,4 +1,4 @@
-model: gcsfs
+model: gcsfs-ispy
 
 framework: pytorch
 
@@ -10,17 +10,14 @@ workflow:
 dataset:
   gcp_project_name: gcs-tess
   gcs_bucket: gcsfs-tessellations-datasets
-  data_folder: UNet3D/micro/100KB-50GB
-  format: npz
-  num_files_train: 50000
+  data_folder: ispy-dlio
+  format: dcm
+  num_files_train: 7005030
   num_samples_per_file: 1
-  record_length: 100000
-  record_length_stdev: 0
-  record_length_resize: 0
 
 reader:
   data_loader: gcsfs_pytorch
-  batch_size: 4
+  batch_size: 1024
   read_threads: 4
   file_shuffle: seed
   sample_shuffle: seed
