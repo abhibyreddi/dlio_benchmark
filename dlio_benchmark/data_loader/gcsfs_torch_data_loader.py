@@ -24,6 +24,7 @@ import io
 import gcsfs
 import fsspec
 from torch.utils.data import Dataset, DataLoader, RandomSampler, SequentialSampler
+from pydicom import dcmread
 from torch.utils.data.sampler import Sampler
 import numpy as np
 
